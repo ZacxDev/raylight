@@ -163,10 +163,11 @@ def usp_dit_forward(
                 x, e=e0, freqs=freqs, context=context, context_img_len=context_img_len
             )
 
-    x = self.head(x, e)
-
-    # Context Parallel
+    # Context Parallel - Gather first to restore full sequence
     x = get_sp_group().all_gather(x, dim=1)
+
+    # Apply head after gathering to ensure dimensions match grid_sizes
+    x = self.head(x, e)
 
     # unpatchify
     x = self.unpatchify(x, grid_sizes)
