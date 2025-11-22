@@ -175,11 +175,16 @@ def usp_dit_forward(
     # pads the result. We need to truncate to the original sequence length.
     import math
     expected_seq_len = math.prod(grid_sizes)
+    print(f"[DEBUG] Before head: x.shape={x.shape}, expected_seq_len={expected_seq_len}")
     if x.shape[1] > expected_seq_len:
         x = x[:, :expected_seq_len, :]
+        print(f"[DEBUG] After slice: x.shape={x.shape}")
 
     # Apply head after gathering to ensure dimensions match grid_sizes
+    # Force another graph break before head to prevent compilation issues
+    torch._dynamo.graph_break()
     x = self.head(x, e)
+    print(f"[DEBUG] After head: x.shape={x.shape}, numel={x.numel()}")
 
     # unpatchify
     x = self.unpatchify(x, grid_sizes)
