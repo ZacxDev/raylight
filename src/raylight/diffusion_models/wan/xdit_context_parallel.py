@@ -164,6 +164,9 @@ def usp_dit_forward(
             )
 
     # Context Parallel - Gather first to restore full sequence
+    # Force a graph break before all_gather to avoid Dynamo shape inference issues
+    # Dynamo doesn't understand that all_gather multiplies dim=1 size by world_size
+    torch._dynamo.graph_break()
     x = get_sp_group().all_gather(x.contiguous(), dim=1)
 
     # Apply head after gathering to ensure dimensions match grid_sizes
@@ -267,6 +270,7 @@ def usp_audio_dit_forward(
             x = self.audio_injector(x, i, audio_emb, audio_emb_global, seq_len)
 
     # head
+    torch._dynamo.graph_break()  # Avoid Dynamo shape inference issues with all_gather
     x = get_sp_group().all_gather(x, dim=1)
     x = self.head(x, e)
 
@@ -346,6 +350,7 @@ def usp_i2v_cross_attn_forward(self, x, context, context_img_len, **kwargs):
 
 def usp_audio_injector(self, x, block_id, audio_emb, audio_emb_global, seq_len, **kwargs):
     audio_attn_id = self.injected_block_id.get(block_id, None)
+    torch._dynamo.graph_break()  # Avoid Dynamo shape inference issues with all_gather
     x = get_sp_group().all_gather(x, dim=1)
     if audio_attn_id is None:
         return x
