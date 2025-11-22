@@ -80,6 +80,7 @@ def apply_rope_sp(xq, xk, freqs_cis):
     return xq_out.reshape_as(xq).type_as(xq), xk_out.reshape_as(xk).type_as(xk)
 
 
+@torch.compiler.disable
 def usp_dit_forward(
     self,
     x,
@@ -178,6 +179,7 @@ def usp_dit_forward(
     return x
 
 
+@torch.compiler.disable
 def usp_audio_dit_forward(
     self,
     x,
