@@ -164,7 +164,7 @@ def usp_dit_forward(
             )
 
     # Context Parallel - Gather first to restore full sequence
-    x = get_sp_group().all_gather(x, dim=1)
+    x = get_sp_group().all_gather(x.contiguous(), dim=1)
 
     # Apply head after gathering to ensure dimensions match grid_sizes
     x = self.head(x, e)
