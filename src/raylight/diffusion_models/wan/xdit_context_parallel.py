@@ -170,18 +170,16 @@ def usp_dit_forward(
     torch._dynamo.graph_break()
     x = get_sp_group().all_gather(x.contiguous(), dim=1)
 
-    # Debug: Check shape after all_gather
-    import comfy.model_management as mm
+    # Fix: Slice to correct sequence length after all_gather
+    # When sequence length is not evenly divisible by world_size, all_gather
+    # pads the result. We need to truncate to the original sequence length.
     import math
-    print(f"[DEBUG] After all_gather: x.shape={x.shape}, grid_sizes={grid_sizes}")
-    print(f"[DEBUG] e.shape={e.shape}")
+    expected_seq_len = math.prod(grid_sizes)
+    if x.shape[1] > expected_seq_len:
+        x = x[:, :expected_seq_len, :]
 
     # Apply head after gathering to ensure dimensions match grid_sizes
     x = self.head(x, e)
-
-    # Debug: Check shape after head
-    print(f"[DEBUG] After head: x.shape={x.shape}, numel={x.numel()}")
-    print(f"[DEBUG] Expected for unpatchify: batch={x.shape[0]}, seq={math.prod(grid_sizes)}, hidden={math.prod(self.patch_size) * 16}")
 
     # unpatchify
     x = self.unpatchify(x, grid_sizes)
@@ -284,6 +282,13 @@ def usp_audio_dit_forward(
     # head
     torch._dynamo.graph_break()  # Avoid Dynamo shape inference issues with all_gather
     x = get_sp_group().all_gather(x, dim=1)
+
+    # Fix: Slice to correct sequence length after all_gather
+    import math
+    expected_seq_len = math.prod(grid_sizes)
+    if x.shape[1] > expected_seq_len:
+        x = x[:, :expected_seq_len, :]
+
     x = self.head(x, e)
 
     # unpatchify
