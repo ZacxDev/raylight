@@ -170,8 +170,18 @@ def usp_dit_forward(
     torch._dynamo.graph_break()
     x = get_sp_group().all_gather(x.contiguous(), dim=1)
 
+    # Debug: Check shape after all_gather
+    import comfy.model_management as mm
+    import math
+    print(f"[DEBUG] After all_gather: x.shape={x.shape}, grid_sizes={grid_sizes}")
+    print(f"[DEBUG] e.shape={e.shape}")
+
     # Apply head after gathering to ensure dimensions match grid_sizes
     x = self.head(x, e)
+
+    # Debug: Check shape after head
+    print(f"[DEBUG] After head: x.shape={x.shape}, numel={x.numel()}")
+    print(f"[DEBUG] Expected for unpatchify: batch={x.shape[0]}, seq={math.prod(grid_sizes)}, hidden={math.prod(self.patch_size) * 16}")
 
     # unpatchify
     x = self.unpatchify(x, grid_sizes)
